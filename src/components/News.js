@@ -14,40 +14,50 @@ const News = (props) => {
     return string.charAt(0).toUpperCase() + string.slice(1);
   };
 
-  // Update the document title whenever the category changes
-  // useEffect(() => {
-  //   document.title = `${capitalizeFirstLetter(props.category)} - NewsBulletin`;
-  //   updateNews();
-  // }, [props.category]);
-
   const updateNews = async () => {
-    const url = `https://newsapi.org/v2/top-headlines?country=${props.country}&category=${props.category}&apiKey=${props.apiKey}&page=${page}&pageSize=${props.pageSize}`;
-    setLoading(true);
-    const data = await fetch(url);
-    const parsedData = await data.json();
-    setArticles(parsedData.articles);
-    setTotalResults(parsedData.totalResults);
-    setLoading(false);
+    try {
+      const url = `https://newsapi.org/v2/top-headlines?country=${props.country}&category=${props.category}&apiKey=${props.apiKey}&page=1&pageSize=${props.pageSize}`;
+      setLoading(true);
+      const data = await fetch(url);
+      const parsedData = await data.json();
+
+      setArticles(parsedData.articles || []);
+      setTotalResults(parsedData.totalResults || 0);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching news:", error);
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    // document.title = `${capitalizeFirstLetter(props.category)} - NewsBulletin`;
     updateNews();
   }, [props.category]);
 
   const fetchMoreData = async () => {
-    const url = `https://newsapi.org/v2/top-headlines?country=${props.country}&category=${props.category}&apiKey=${props.apiKey}&page=${page}&pageSize=${props.pageSize}`;
-    const nextPage = page + 1;
-    setPage(nextPage);
-    const data = await fetch(url);
-    const parsedData = await data.json();
-    setArticles(articles.concat(parsedData.articles));
-    setTotalResults(parsedData.totalResults);
+    try {
+      const nextPage = page + 1;
+      const url = `https://newsapi.org/v2/top-headlines?country=${props.country}&category=${props.category}&apiKey=${props.apiKey}&page=${nextPage}&pageSize=${props.pageSize}`;
+      const data = await fetch(url);
+      const parsedData = await data.json();
+
+      // Remove duplicate articles
+      const newArticles = parsedData.articles.filter(
+        (newArticle) =>
+          !articles.some((existingArticle) => existingArticle.url === newArticle.url)
+      );
+
+      setArticles((prevArticles) => [...prevArticles, ...newArticles]);
+      setTotalResults(parsedData.totalResults || 0);
+      setPage(nextPage);
+    } catch (error) {
+      console.error("Error fetching more data:", error);
+    }
   };
 
   return (
     <>
-      <h1 className="text-center" style={{ margin: '30px 0px', marginTop:'90px' }}>
+      <h1 className="text-center" style={{ margin: '30px 0px', marginTop: '90px' }}>
         News Bulletin - Top {capitalizeFirstLetter(props.category)} Headlines
       </h1>
       {loading && <Spinner />}
@@ -59,16 +69,19 @@ const News = (props) => {
       >
         <div className="container">
           <div className="row">
-            {articles.map((element) => (
-              <div className="col-md-4" key={element.url}>
+            {articles.map((element, index) => (
+              <div
+                className="col-md-4"
+                key={`${element.url}-${index}`} // Ensure uniqueness by combining URL and index
+              >
                 <Newsitem
-                  title={element.title || ""}
-                  description={element.description || ""}
-                  imageUrl={element.urlToImage}
-                  newsUrl={element.url}
-                  author={element.author}
-                  date={element.publishedAt}
-                  source={element.source.name}
+                  title={element.title || "No Title Available"}
+                  description={element.description || "No Description Available"}
+                  imageUrl={element.urlToImage || "https://via.placeholder.com/150"}
+                  newsUrl={element.url || "#"}
+                  author={element.author || "Unknown"}
+                  date={element.publishedAt || "Unknown Date"}
+                  source={element.source?.name || "Unknown Source"}
                 />
               </div>
             ))}
